@@ -1,9 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>netstandard2.1</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
+        <Nullable>disable</Nullable>
+        <LangVersion>latestmajor</LangVersion>
     </PropertyGroup>
+
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+      <Exec Command="xcopy /y /d  &quot;$(ProjectDir)$(OutDir)UECS.dll&quot; &quot;C:\Code\Frameworks&quot;&#xA;xcopy /y /d  &quot;$(ProjectDir)$(OutDir)UECS.dll&quot; &quot;D:\UndefinedProject\Undefined\Assets\Plugins&quot;" />
+    </Target>
 
 </Project>
