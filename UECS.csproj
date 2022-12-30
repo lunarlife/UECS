@@ -3,9 +3,15 @@
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>disable</Nullable>
-        <LangVersion>latestmajor</LangVersion>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
     </PropertyGroup>
+
+    <ItemGroup>
+      <Reference Include="Utils">
+        <HintPath>C:\Code\Frameworks\Utils.dll</HintPath>
+      </Reference>
+    </ItemGroup>
 
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">
       <Exec Command="xcopy /y /d  &quot;$(ProjectDir)$(OutDir)UECS.dll&quot; &quot;C:\Code\Frameworks&quot;&#xA;xcopy /y /d  &quot;$(ProjectDir)$(OutDir)UECS.dll&quot; &quot;D:\UndefinedProject\Undefined\Assets\Plugins&quot;" />

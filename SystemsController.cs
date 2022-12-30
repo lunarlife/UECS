@@ -1,4 +1,8 @@
+using System.Collections;
 using System.Reflection;
+using UECS.Exceptions;
+using Utils;
+using SystemException = UECS.Exceptions.SystemException;
 
 namespace UECS;
 
@@ -12,10 +16,13 @@ public sealed class SystemsController
 
     private readonly List<SystemAction> _syncSystems = new();
     private readonly List<SystemAction> _asyncSystems = new();
-    private readonly Dictionary<Type, HashSet<ComponentBase>> _components = new();
-    private readonly Dictionary<Type, HashSet<ComponentBase>> _syncChangedComponents = new();
-    private readonly Dictionary<Type, HashSet<ComponentBase>> _asyncChangedComponents = new();
+    private readonly Dictionary<Type, List<ComponentBase>> _components = new();
+    private Dictionary<Type, List<ComponentBase>> _syncChangedComponents = new();
+    private Dictionary<Type, List<ComponentBase>> _asyncChangedComponents = new();
 
+    private Dictionary<Type, List<ComponentBase>> _updateSyncChangedComponents = new();
+    private Dictionary<Type, List<ComponentBase>> _updateAsyncChangedComponents = new();
+    
     private object _syncLock = new();
     private object _asyncLock = new();
     private object _allLock = new();
@@ -36,18 +43,33 @@ public sealed class SystemsController
         if (_components.ContainsKey(type))
         {
             var components = _components[type];
-            if (components.Contains(componentBase)) throw new SystemException("component already registered");
             lock (_currLock)
+            {
+                if (components.Contains(componentBase)) throw new SystemException("component already registered");
                 components.Add(componentBase);
+            }
         }
         else
             lock(_currLock)
-                _components.Add(type, new HashSet<ComponentBase>
+                _components.Add(type, new List<ComponentBase>
                 {
                     componentBase
                 });
     }
-    
+    public void Remove(ComponentBase componentBase)
+    {
+        var type = componentBase.GetType();
+        lock (_allLock)
+        {
+            AllControllers[this].Add(componentBase);
+        }
+        lock (_currLock)
+        {
+            if (!_components.ContainsKey(type))
+                throw new SystemException("component is not registered in this controller");
+            _components[type].Remove(componentBase);
+        }
+    }
     public void Register(IAsyncSystem system) =>
         (system is ISyncSystem ? _syncSystems : _asyncSystems).Add(new SystemAction
         {
@@ -60,22 +82,25 @@ public sealed class SystemsController
     {
         lock (_syncLock)
         {
-            Update(_syncSystems, _syncChangedComponents);
-            _syncChangedComponents.Clear();
+            _updateSyncChangedComponents = _syncChangedComponents;
+            _syncChangedComponents = new Dictionary<Type, List<ComponentBase>>();
         }
+        Update(_syncSystems, _updateSyncChangedComponents);
+        _updateSyncChangedComponents.Clear();
     }
 
     public void UpdateAsync()
     {
         lock (_asyncLock)
         {
-            Update(_asyncSystems, _asyncChangedComponents);
-            _asyncChangedComponents.Clear();
+            _updateAsyncChangedComponents = _asyncChangedComponents;
+            _asyncChangedComponents = new Dictionary<Type, List<ComponentBase>>();
         }
-
+        Update(_asyncSystems, _updateAsyncChangedComponents);
+        _updateAsyncChangedComponents.Clear();
     }
 
-    private void Update(IReadOnlyList<SystemAction> list, Dictionary<Type,HashSet<ComponentBase>> changedComponents)
+    private void Update(IReadOnlyList<SystemAction> list, Dictionary<Type, List<ComponentBase>> changedComponents)
     {
         for (var i = 0; i < list.Count; i++)
         {
@@ -110,7 +135,7 @@ public sealed class SystemsController
                     null, new object[] { result }, null));
         }
     }
-    private void SetHandlers(SystemAction system, IReadOnlyDictionary<Type, HashSet<ComponentBase>> changedComponents)
+    private void SetHandlers(SystemAction system, IReadOnlyDictionary<Type, List<ComponentBase>> changedComponents)
     {
         foreach (var field in system.Handlers)
         {
@@ -156,18 +181,20 @@ public sealed class SystemsController
         return null;
     }
 
-    private static void ApplyUpdate(ComponentBase component, IDictionary<Type, HashSet<ComponentBase>> changedComponents, object l)
+    private static void ApplyUpdate(ComponentBase component, IDictionary<Type, List<ComponentBase>> changedComponents, object l)
     {
         var type = component.GetType();
         if (changedComponents.ContainsKey(type))
         {
             var components = changedComponents[type];
-            if (components.Contains(component)) return;
             lock (l)
+            {
+                if (components.Contains(component)) return;
                 components.Add(component);
+            }
         }
         else
-            changedComponents.Add(type, new HashSet<ComponentBase>
+            changedComponents.Add(type, new List<ComponentBase>
             {
                 component
             });

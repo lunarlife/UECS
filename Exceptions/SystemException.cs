@@ -1,6 +1,6 @@
-namespace UECS;
+namespace UECS.Exceptions;
 
-public class SystemException : Exception
+public sealed class SystemException : Exception
 {
     public SystemException(string msg) : base(msg)
     {

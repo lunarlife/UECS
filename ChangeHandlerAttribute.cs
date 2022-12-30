@@ -1,7 +1,7 @@
 namespace UECS;
 
 [AttributeUsage(AttributeTargets.Field)]
-public class ChangeHandlerAttribute : Attribute
+public sealed class ChangeHandlerAttribute : Attribute
 {
     public bool Inheritance { get; }
 

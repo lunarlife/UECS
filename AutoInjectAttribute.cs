@@ -1,7 +1,7 @@
 namespace UECS;
 
 [AttributeUsage(AttributeTargets.Field)]
-public class AutoInjectAttribute : Attribute
+public sealed class AutoInjectAttribute : Attribute
 {
     public bool Inheritance { get; }
 

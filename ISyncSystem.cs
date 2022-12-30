@@ -1,7 +1,6 @@
-namespace UECS
+namespace UECS;
+
+public interface ISyncSystem : IAsyncSystem
 {
-    public interface ISyncSystem : IAsyncSystem
-    {
         
-    }
 }
