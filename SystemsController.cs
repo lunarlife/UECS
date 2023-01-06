@@ -70,13 +70,16 @@ public sealed class SystemsController
             _components[type].Remove(componentBase);
         }
     }
-    public void Register(IAsyncSystem system) =>
+    public void Register(IAsyncSystem system)
+    {
         (system is ISyncSystem ? _syncSystems : _asyncSystems).Add(new SystemAction
         {
             System = system,
             Filters = GetSystemFilterFields(system),
             Handlers = GetSystemChangeHandlers(system)
         });
+        system.Init();
+    }
 
     public void UpdateSync()
     {
@@ -169,7 +172,7 @@ public sealed class SystemsController
     {
         var controller = FindComponentController(component);
         
-        ApplyUpdate(component, controller._asyncChangedComponents, controller._asyncSystems);
+        ApplyUpdate(component, controller._asyncChangedComponents, controller._asyncLock);
         ApplyUpdate(component, controller._syncChangedComponents, controller._syncLock);
     }
 
@@ -181,23 +184,25 @@ public sealed class SystemsController
         return null;
     }
 
-    private static void ApplyUpdate(ComponentBase component, IDictionary<Type, List<ComponentBase>> changedComponents, object l)
+    private static void ApplyUpdate(ComponentBase component, IDictionary<Type, List<ComponentBase>> changedComponents,
+        object l)
     {
         var type = component.GetType();
-        if (changedComponents.ContainsKey(type))
+        lock (l)
         {
-            var components = changedComponents[type];
-            lock (l)
+            if (changedComponents.ContainsKey(type))
             {
+                var components = changedComponents[type];
+
                 if (components.Contains(component)) return;
                 components.Add(component);
             }
+            else
+                changedComponents.Add(type, new List<ComponentBase>
+                {
+                    component
+                });
         }
-        else
-            changedComponents.Add(type, new List<ComponentBase>
-            {
-                component
-            });
     }
 
     private struct SystemAction
